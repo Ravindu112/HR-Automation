@@ -2,12 +2,11 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { LogIn, KeyRound, ShieldCheck, ArrowRight } from "lucide-react";
 
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [employeeId, setEmployeeId] = useState("");
   const [password, setPassword] = useState("");
@@ -29,8 +28,18 @@ function LoginForm() {
         setError(data.error ?? "Login failed.");
         return;
       }
-      router.replace(searchParams.get("next") || data.redirect);
-      router.refresh();
+      // Load the protected page as a fresh page request. The session
+      // cookies are applied by then, so the middleware and the auth
+      // provider both see the new session. A client-side router.replace
+      // here keeps the stale auth context (user == null) mounted in the
+      // root layout, which makes the portal guard bounce back to /login
+      // in a redirect loop that looks like an endless loading screen.
+      const next = searchParams.get("next");
+      const dest =
+        next && next.startsWith("/") && !next.startsWith("//")
+          ? next
+          : data.redirect;
+      window.location.assign(dest);
     } catch {
       setError("Something went wrong. Try again.");
     } finally {
