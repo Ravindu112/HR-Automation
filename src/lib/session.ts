@@ -93,9 +93,7 @@ export async function deleteSession(
 }
 
 /** Map a public profile payload. */
-export function publicProfile(
-  user: SessionUser & Partial<Record<string, unknown>>
-) {
+export function publicProfile(user: SessionUser) {
   return {
     id: user.id,
     employee_id: user.employee_id,

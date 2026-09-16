@@ -5,6 +5,8 @@ import { randomBytes } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
 import {
   createSession,
+  deleteSession,
+  getUserFromToken,
   normalizeEmployeeId,
   publicProfile,
   EXPIRES_COOKIE,
@@ -75,6 +77,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Could not start a session." }, { status: 500 });
   }
 
+  // Confirm the new session actually resolves to a user before issuing
+  // cookies. This catches an out-of-date database schema (e.g. the CV /
+  // skills migration not applied) at login time, so the browser never
+  // reaches a portal <-> login redirect loop that looks like an endless
+  // loading screen.
+  const sessionUser = await getUserFromToken(db, token);
+  if (!sessionUser) {
+    await deleteSession(db, token);
+    return NextResponse.json(
+      {
+        error:
+          "Could not validate your session. The database schema may be out of date — ask the administrator to run the latest Supabase migration.",
+      },
+      { status: 500 }
+    );
+  }
+
   const cookieStore = await cookies();
   const maxAge = SESSION_DURATION_DAYS * 24 * 60 * 60;
   cookieStore.set(SESSION_COOKIE, token, {
@@ -107,7 +126,7 @@ export async function POST(request: NextRequest) {
   );
 
   return NextResponse.json({
-    redirect: user.role === "hr_manager" ? "/portal/hr" : "/portal/employee",
-    user: publicProfile(user),
+    redirect: sessionUser.role === "hr_manager" ? "/portal/hr" : "/portal/employee",
+    user: publicProfile(sessionUser),
   });
 }
