@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "@node-rs/bcrypt";
+import bcrypt from "bcryptjs";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeEmployeeId } from "@/lib/session";
 

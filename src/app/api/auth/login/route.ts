@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "@node-rs/bcrypt";
+import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import { randomBytes } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
