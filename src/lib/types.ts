@@ -1,0 +1,128 @@
+export type UserRole = "hr_manager" | "employee";
+export type UserStatus = "pending" | "verified" | "rejected";
+export type IdStatus = "unused" | "claimed";
+export type DocumentCategory = "id" | "certificate" | "educational" | "contract" | "other";
+export type LeaveType = "annual" | "sick" | "casual" | "maternity" | "unpaid" | "other";
+export type LeaveStatus = "pending" | "approved" | "rejected";
+export type ReviewStatus = "pending" | "approved" | "rejected";
+
+export interface SessionUser {
+  id: string;
+  employee_id: string;
+  role: UserRole;
+  status: UserStatus;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  phone: string | null;
+  date_of_birth: string | null;
+  address: string | null;
+  department: string | null;
+  position: string | null;
+  profile_picture_path: string | null;
+}
+
+export interface AppUser extends SessionUser {
+  password_hash: string;
+  rejection_reason: string | null;
+  created_at: string;
+  decided_at: string | null;
+  decided_by: string | null;
+}
+
+export interface EmployeeId {
+  id: string;
+  employee_id: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  department: string | null;
+  position: string | null;
+  status: IdStatus;
+  created_by: string | null;
+  created_at: string;
+  claimed_at: string | null;
+}
+
+export interface Document {
+  id: string;
+  user_id: string;
+  name: string;
+  category: DocumentCategory;
+  file_name: string;
+  file_path: string;
+  size_bytes: number | null;
+  mime_type: string | null;
+  created_at: string;
+}
+
+export interface LeaveRequest {
+  id: string;
+  user_id: string;
+  leave_type: LeaveType;
+  start_date: string;
+  end_date: string;
+  reason: string | null;
+  status: LeaveStatus;
+  decided_by: string | null;
+  decided_at: string | null;
+  created_at: string;
+  applicant?: Pick<AppUser, "first_name" | "last_name" | "department" | "position" | "profile_picture_path"> | null;
+}
+
+export interface Qualification {
+  id: string;
+  user_id: string;
+  title: string;
+  institution: string | null;
+  year: string | null;
+  status: ReviewStatus;
+  decided_by: string | null;
+  decided_at: string | null;
+  created_at: string;
+  applicant?: Pick<AppUser, "first_name" | "last_name" | "department" | "position" | "profile_picture_path"> | null;
+}
+
+export interface ProfileChangeRequest {
+  id: string;
+  user_id: string;
+  field: string;
+  field_label: string;
+  current_value: string | null;
+  new_value: string;
+  status: ReviewStatus;
+  decided_by: string | null;
+  decided_at: string | null;
+  created_at: string;
+  applicant?: Pick<AppUser, "first_name" | "last_name" | "department" | "position" | "profile_picture_path"> | null;
+}
+
+export const DOCUMENT_CATEGORIES: { value: DocumentCategory; label: string }[] = [
+  { value: "id", label: "ID / Passport" },
+  { value: "certificate", label: "Certificate" },
+  { value: "educational", label: "Educational" },
+  { value: "contract", label: "Contract" },
+  { value: "other", label: "Other" },
+];
+
+export const LEAVE_TYPES: { value: LeaveType; label: string }[] = [
+  { value: "annual", label: "Annual leave" },
+  { value: "sick", label: "Sick leave" },
+  { value: "casual", label: "Casual leave" },
+  { value: "maternity", label: "Maternity leave" },
+  { value: "unpaid", label: "Unpaid leave" },
+  { value: "other", label: "Other" },
+];
+
+export const PROFILE_FIELDS: { field: string; label: string }[] = [
+  { field: "first_name", label: "First name" },
+  { field: "last_name", label: "Last name" },
+  { field: "email", label: "Email" },
+  { field: "phone", label: "Phone" },
+  { field: "date_of_birth", label: "Date of birth" },
+  { field: "address", label: "Address" },
+];
+
+export const PROFILE_FIELD_LABELS: Record<string, string> = Object.fromEntries(
+  PROFILE_FIELDS.map((f) => [f.field, f.label])
+);
