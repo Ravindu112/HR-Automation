@@ -24,6 +24,11 @@ export function documentPath(userId: string, fileName: string): string {
   return `${userId}/${Date.now()}-${fileName}`;
 }
 
+/** A user has exactly one CV file at a stable path so updates replace it. */
+export function cvPath(userId: string): string {
+  return `${userId}/cv.pdf`;
+}
+
 export async function uploadFile(
   bucket: string,
   fullPath: string,

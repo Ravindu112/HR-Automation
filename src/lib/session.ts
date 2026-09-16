@@ -11,7 +11,7 @@ export function normalizeEmployeeId(value: string): string {
 }
 
 const USER_SELECT =
-  "id, employee_id, role, status, first_name, last_name, email, phone, date_of_birth, address, department, position, profile_picture_path";
+  "id, employee_id, role, status, first_name, last_name, email, phone, date_of_birth, address, department, position, profile_picture_path, skills, cv_path, cv_file_name, cv_size_bytes, cv_updated_at";
 
 export function mapSessionUser(row: Record<string, unknown>): SessionUser {
   return {
@@ -28,6 +28,11 @@ export function mapSessionUser(row: Record<string, unknown>): SessionUser {
     department: (row.department as string) ?? null,
     position: (row.position as string) ?? null,
     profile_picture_path: (row.profile_picture_path as string) ?? null,
+    skills: Array.isArray(row.skills) ? (row.skills as string[]) : [],
+    cv_path: (row.cv_path as string) ?? null,
+    cv_file_name: (row.cv_file_name as string) ?? null,
+    cv_size_bytes: (row.cv_size_bytes as number) ?? null,
+    cv_updated_at: (row.cv_updated_at as string) ?? null,
   };
 }
 
@@ -104,5 +109,10 @@ export function publicProfile(
     department: user.department,
     position: user.position,
     profile_picture_path: user.profile_picture_path,
+    skills: user.skills,
+    cv_path: user.cv_path,
+    cv_file_name: user.cv_file_name,
+    cv_size_bytes: user.cv_size_bytes,
+    cv_updated_at: user.cv_updated_at,
   };
 }

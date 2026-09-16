@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { UserStatus, IdStatus, LeaveStatus, ReviewStatus, UserRole, DocumentCategory } from "@/lib/types";
+import type { UserStatus, IdStatus, LeaveStatus, ReviewStatus, UserRole, DocumentCategory, QualificationType } from "@/lib/types";
 
 const STYLES: Record<string, string> = {
   // user / review statuses
@@ -19,6 +19,8 @@ const STYLES: Record<string, string> = {
   certificate: "bg-blue-50 text-blue-700 ring-blue-600/20",
   educational: "bg-violet-50 text-violet-700 ring-violet-600/20",
   other: "bg-gray-100 text-gray-700 ring-gray-500/20",
+  // qualification types
+  professional: "bg-sky-50 text-sky-700 ring-sky-600/20",
 };
 
 const LABELS: Record<string, string> = {
@@ -35,6 +37,7 @@ const LABELS: Record<string, string> = {
   certificate: "Certificate",
   educational: "Educational",
   other: "Other",
+  professional: "Professional",
 };
 
 type BadgeValue =
@@ -43,7 +46,8 @@ type BadgeValue =
   | LeaveStatus
   | ReviewStatus
   | UserRole
-  | DocumentCategory;
+  | DocumentCategory
+  | QualificationType;
 
 export default function Badge({
   value,

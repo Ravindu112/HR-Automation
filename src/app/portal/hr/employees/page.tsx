@@ -2,13 +2,24 @@
 
 import { useCallback, useEffect, useDeferredValue, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { documentUrl } from "@/lib/supabase/storage";
 import Avatar from "@/components/avatar";
 import Badge from "@/components/badge";
 import Modal from "@/components/modal";
 import DocumentList from "@/components/document-list";
-import type { AppUser, Document } from "@/lib/types";
-import { formatDate, fullName } from "@/lib/utils";
-import { Users, Search, Pencil, Loader2 } from "lucide-react";
+import type { AppUser, Document, Qualification } from "@/lib/types";
+import { formatBytes, formatDate, fullName } from "@/lib/utils";
+import {
+  Users,
+  Search,
+  Pencil,
+  Loader2,
+  FileText,
+  Download,
+  Sparkles,
+  GraduationCap,
+  Briefcase,
+} from "lucide-react";
 
 export default function HrEmployeesPage() {
   const [employees, setEmployees] = useState<AppUser[]>([]);
@@ -16,6 +27,9 @@ export default function HrEmployeesPage() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<AppUser | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [qualifications, setQualifications] = useState<Qualification[]>([]);
+  const [cvUrl, setCvUrl] = useState<string | null>(null);
+  const [cvLoading, setCvLoading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ department: "", position: "" });
   const [saving, setSaving] = useState(false);
@@ -41,6 +55,8 @@ export default function HrEmployeesPage() {
     setSelected(emp);
     setError(null);
     setEditing(false);
+    setCvUrl(null);
+    setCvLoading(Boolean(emp.cv_path));
     setForm({ department: emp.department ?? "", position: emp.position ?? "" });
     const supabase = createClient();
     const { data } = await supabase
@@ -49,6 +65,16 @@ export default function HrEmployeesPage() {
       .eq("user_id", emp.id)
       .order("created_at", { ascending: false });
     setDocuments(data ?? []);
+    const { data: quals } = await supabase
+      .from("qualifications")
+      .select("*")
+      .eq("user_id", emp.id)
+      .order("created_at", { ascending: false });
+    setQualifications(quals ?? []);
+    if (emp.cv_path) {
+      setCvUrl(await documentUrl(emp.cv_path));
+      setCvLoading(false);
+    }
   };
 
   const save = async () => {
@@ -75,7 +101,15 @@ export default function HrEmployeesPage() {
   const q = deferredSearch.trim().toLowerCase();
   const filtered = q
     ? employees.filter((e) =>
-        [e.first_name, e.last_name, e.email, e.position, e.department, e.employee_id]
+        [
+          e.first_name,
+          e.last_name,
+          e.email,
+          e.position,
+          e.department,
+          e.employee_id,
+          ...(e.skills ?? []),
+        ]
           .filter(Boolean)
           .some((v) => String(v).toLowerCase().includes(q))
       )
@@ -98,7 +132,7 @@ export default function HrEmployeesPage() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name, position, department…"
+          placeholder="Search by name, position, department, skill…"
           className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
         />
       </div>
@@ -228,6 +262,103 @@ export default function HrEmployeesPage() {
                     <dd className="break-all font-medium text-gray-900">{selected.address ?? "—"}</dd>
                   </div>
                 </dl>
+
+                <div className="rounded-xl border border-gray-100 p-4">
+                  <p className="mb-2 text-sm font-medium text-gray-700">CV / Resume</p>
+                  {selected.cv_path ? (
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2.5">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <FileText className="h-4 w-4 shrink-0 text-indigo-600" />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-gray-800">
+                            {selected.cv_file_name ?? "cv.pdf"}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {formatBytes(selected.cv_size_bytes)} · {formatDate(selected.cv_updated_at)}
+                          </p>
+                        </div>
+                      </div>
+                      {cvLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
+                      ) : (
+                        <a
+                          href={cvUrl ?? "#"}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(e) => {
+                            if (!cvUrl) {
+                              e.preventDefault();
+                              setCvLoading(true);
+                              documentUrl(selected.cv_path ?? "").then((u) => {
+                                setCvLoading(false);
+                                if (u) setCvUrl(u);
+                              });
+                            }
+                          }}
+                          className="flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50"
+                        >
+                          {cvLoading ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Download size={13} />
+                          )}
+                          Download
+                        </a>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400">No CV uploaded.</p>
+                  )}
+                </div>
+
+                <div>
+                  <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                    <Sparkles className="h-4 w-4 text-emerald-600" /> Skills
+                  </p>
+                  {selected.skills.length === 0 ? (
+                    <p className="text-sm text-gray-400">No skills listed.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {selected.skills.map((s) => (
+                        <span
+                          key={s}
+                          className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700"
+                        >
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <p className="mb-2 text-sm font-medium text-gray-700">Qualifications</p>
+                  {qualifications.length === 0 ? (
+                    <p className="text-sm text-gray-400">No qualifications added.</p>
+                  ) : (
+                    <ul className="divide-y divide-gray-100 rounded-xl border border-gray-100">
+                      {qualifications.map((q) => (
+                        <li key={q.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                          <div className="flex min-w-0 items-center gap-2">
+                            {q.qualification_type === "educational" ? (
+                              <GraduationCap className="h-4 w-4 shrink-0 text-indigo-600" />
+                            ) : (
+                              <Briefcase className="h-4 w-4 shrink-0 text-sky-600" />
+                            )}
+                            <div className="min-w-0">
+                              <p className="truncate font-medium text-gray-800">{q.title}</p>
+                              <p className="truncate text-xs text-gray-500">
+                                {q.institution ?? "—"}
+                                {q.year && ` · ${q.year}`}
+                              </p>
+                            </div>
+                          </div>
+                          <Badge value={q.qualification_type} />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
 
                 <div>
                   <p className="mb-2 text-sm font-medium text-gray-700">Documents</p>

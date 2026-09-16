@@ -4,19 +4,35 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/context/auth-context";
 import { createClient } from "@/lib/supabase/client";
 import Badge from "@/components/badge";
-import type { Qualification } from "@/lib/types";
+import {
+  QUALIFICATION_TYPES,
+  type Qualification,
+  type QualificationType,
+} from "@/lib/types";
 import { formatDate } from "@/lib/utils";
-import { GraduationCap, Loader2, Plus, Trash2 } from "lucide-react";
+import {
+  GraduationCap,
+  Loader2,
+  Plus,
+  Trash2,
+  Sparkles,
+  X,
+} from "lucide-react";
 
 export default function EmployeeQualificationsPage() {
-  const { user } = useAuth();
+  const { user, refresh } = useAuth();
   const [items, setItems] = useState<Qualification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [qualType, setQualType] = useState<QualificationType>("educational");
   const [title, setTitle] = useState("");
   const [institution, setInstitution] = useState("");
   const [year, setYear] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [skills, setSkills] = useState<string[]>([]);
+  const [skillInput, setSkillInput] = useState("");
+  const [skillSaving, setSkillSaving] = useState(false);
+  const [skillError, setSkillError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -34,6 +50,10 @@ export default function EmployeeQualificationsPage() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    if (user) setSkills(user.skills);
+  }, [user]);
+
   if (!user) return null;
 
   const add = async (e: FormEvent) => {
@@ -45,6 +65,7 @@ export default function EmployeeQualificationsPage() {
       const supabase = createClient();
       const { error: insertError } = await supabase.from("qualifications").insert({
         user_id: user.id,
+        qualification_type: qualType,
         title: title.trim(),
         institution: institution.trim() || null,
         year: year.trim() || null,
@@ -71,20 +92,71 @@ export default function EmployeeQualificationsPage() {
     await load();
   };
 
+  const saveSkills = async (next: string[]) => {
+    if (!user) return;
+    setSkillSaving(true);
+    setSkillError(null);
+    try {
+      const supabase = createClient();
+      const { error: updateError } = await supabase
+        .from("app_users")
+        .update({ skills: next })
+        .eq("id", user.id);
+      if (updateError) throw updateError;
+      setSkills(next);
+      await refresh();
+    } catch (err) {
+      setSkillError((err as Error).message);
+    } finally {
+      setSkillSaving(false);
+    }
+  };
+
+  const addSkill = async (e: FormEvent) => {
+    e.preventDefault();
+    const value = skillInput.trim();
+    if (!value) return;
+    const exists = skills.some((s) => s.toLowerCase() === value.toLowerCase());
+    if (exists) {
+      setSkillInput("");
+      return;
+    }
+    await saveSkills([...skills, value]);
+    setSkillInput("");
+  };
+
+  const removeSkill = async (skill: string) => {
+    await saveSkills(skills.filter((s) => s !== skill));
+  };
+
   const inputCls =
     "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200";
 
   return (
     <div className="mx-auto max-w-3xl p-6 lg:p-8">
-      <h1 className="text-2xl font-bold">My Qualifications</h1>
+      <h1 className="text-2xl font-bold">Qualifications & Skills</h1>
       <p className="text-sm text-gray-500">
-        Add your qualifications — they are added to your profile immediately,
-        no review needed.
+        Add your educational qualifications, professional qualifications and
+        skills — they appear on your profile dashboard immediately.
       </p>
 
       <form onSubmit={add} className="mt-6 rounded-2xl border border-gray-200 bg-white p-6">
         <h3 className="mb-4 font-semibold">Add a new qualification</h3>
         <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Type *</label>
+            <select
+              className={inputCls}
+              value={qualType}
+              onChange={(e) => setQualType(e.target.value as QualificationType)}
+            >
+              {QUALIFICATION_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
               Qualification * <span className="text-gray-400">(e.g. BSc Computer Science)</span>
@@ -96,24 +168,26 @@ export default function EmployeeQualificationsPage() {
               onChange={(e) => setTitle(e.target.value)}
             />
           </div>
+        </div>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Institution</label>
             <input
               className={inputCls}
               value={institution}
               onChange={(e) => setInstitution(e.target.value)}
-              placeholder="University name"
+              placeholder="University / training provider"
             />
           </div>
-        </div>
-        <div className="mt-4 sm:max-w-[12rem]">
-          <label className="mb-1 block text-sm font-medium text-gray-700">Year</label>
-          <input
-            className={inputCls}
-            value={year}
-            onChange={(e) => setYear(e.target.value)}
-            placeholder="2024"
-          />
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Year</label>
+            <input
+              className={inputCls}
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
+              placeholder="2024"
+            />
+          </div>
         </div>
 
         {error && (
@@ -144,7 +218,10 @@ export default function EmployeeQualificationsPage() {
           {items.map((q) => (
             <li key={q.id} className="flex items-center justify-between gap-4 px-5 py-4">
               <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-900">{q.title}</p>
+                <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-gray-900">
+                  {q.title}
+                  <Badge value={q.qualification_type} />
+                </p>
                 <p className="text-xs text-gray-500">
                   {q.institution ?? "—"}
                   {q.year && ` · ${q.year}`} · {formatDate(q.created_at)}
@@ -164,6 +241,54 @@ export default function EmployeeQualificationsPage() {
           ))}
         </ul>
       )}
+
+      {/* Skills */}
+      <div className="mt-6 rounded-2xl border border-gray-200 bg-white">
+        <div className="flex items-center gap-2 border-b border-gray-100 px-6 py-4">
+          <Sparkles className="h-4 w-4 text-emerald-600" />
+          <h3 className="font-semibold">Skills</h3>
+          {skillSaving && <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600" />}
+        </div>
+        <div className="px-6 py-4">
+          {skills.length > 0 && (
+            <div className="mb-3 flex flex-wrap gap-2">
+              {skills.map((s) => (
+                <span
+                  key={s}
+                  className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700"
+                >
+                  {s}
+                  <button
+                    onClick={() => removeSkill(s)}
+                    title={`Remove ${s}`}
+                    className="rounded-full p-0.5 hover:bg-emerald-100"
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <form onSubmit={addSkill} className="flex gap-2">
+            <input
+              className={inputCls}
+              value={skillInput}
+              onChange={(e) => setSkillInput(e.target.value)}
+              placeholder="e.g. JavaScript, Project management…"
+            />
+            <button
+              type="submit"
+              disabled={skillSaving || !skillInput.trim()}
+              className="shrink-0 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+            >
+              Add
+            </button>
+          </form>
+          {skillError && (
+            <div className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{skillError}</div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

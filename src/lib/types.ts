@@ -5,6 +5,7 @@ export type DocumentCategory = "id" | "certificate" | "educational" | "contract"
 export type LeaveType = "annual" | "sick" | "casual" | "maternity" | "unpaid" | "other";
 export type LeaveStatus = "pending" | "approved" | "rejected";
 export type ReviewStatus = "pending" | "approved" | "rejected";
+export type QualificationType = "educational" | "professional";
 
 export interface SessionUser {
   id: string;
@@ -20,6 +21,11 @@ export interface SessionUser {
   department: string | null;
   position: string | null;
   profile_picture_path: string | null;
+  skills: string[];
+  cv_path: string | null;
+  cv_file_name: string | null;
+  cv_size_bytes: number | null;
+  cv_updated_at: string | null;
 }
 
 export interface AppUser extends SessionUser {
@@ -73,6 +79,7 @@ export interface LeaveRequest {
 export interface Qualification {
   id: string;
   user_id: string;
+  qualification_type: QualificationType;
   title: string;
   institution: string | null;
   year: string | null;
@@ -112,6 +119,14 @@ export const LEAVE_TYPES: { value: LeaveType; label: string }[] = [
   { value: "maternity", label: "Maternity leave" },
   { value: "unpaid", label: "Unpaid leave" },
   { value: "other", label: "Other" },
+];
+
+export const QUALIFICATION_TYPES: {
+  value: QualificationType;
+  label: string;
+}[] = [
+  { value: "educational", label: "Educational" },
+  { value: "professional", label: "Professional" },
 ];
 
 export const PROFILE_FIELDS: { field: string; label: string }[] = [

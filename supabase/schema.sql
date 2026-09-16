@@ -5,7 +5,7 @@
 -- This replaces the previous email-auth schema. It sets up:
 --   • employee_ids  – IDs pre-registered by the HR manager
 --   • app_users     – employee/HR accounts (employee ID + password,
---                     status: pending / verified / rejected)
+--                     status: pending / verified / rejected, CV, skills)
 --   • sessions      – custom login sessions
 --   • documents     – uploaded documents per user
 --   • leave_requests, qualifications, profile_change_requests
@@ -62,6 +62,11 @@ create table public.app_users (
   department text,
   position text,
   profile_picture_path text,
+  cv_path text,
+  cv_file_name text,
+  cv_size_bytes bigint,
+  cv_updated_at timestamptz,
+  skills text[] not null default '{}',
   rejection_reason text,
   created_at timestamptz not null default now(),
   decided_at timestamptz,
@@ -119,11 +124,15 @@ create index if not exists leave_requests_status_idx on public.leave_requests(st
 create index if not exists leave_requests_user_idx on public.leave_requests(user_id);
 
 -- ---------- QUALIFICATIONS ----------
--- Employees add their own qualifications; they are applied to the profile
--- instantly with no HR review, so new rows default to 'approved'.
+-- Employees add their own educational and professional qualifications;
+-- they are applied to the profile instantly with no HR review, so new
+-- rows default to 'approved'. qualification_type groups them as
+-- 'educational' or 'professional' on the profile dashboard.
 create table public.qualifications (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.app_users(id) on delete cascade,
+  qualification_type text not null default 'educational'
+    check (qualification_type in ('educational', 'professional')),
   title text not null,
   institution text,
   year text,
