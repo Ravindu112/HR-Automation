@@ -14,6 +14,7 @@ import {
 } from "@/lib/supabase/storage";
 import Avatar from "@/components/avatar";
 import Badge from "@/components/badge";
+import { logAudit } from "@/lib/activity";
 import { formatDate, formatBytes } from "@/lib/utils";
 import {
   PROFILE_FIELDS,
@@ -178,6 +179,14 @@ export default function EmployeeProfilePage() {
         new_value: draft,
       });
       if (error) throw error;
+      await logAudit({
+        user,
+        action: "profile_change.requested",
+        entityType: "profile_change_requests",
+        summary: `Requested ${editing} change → ${draft}`,
+        oldValue: { field: editing, value: current },
+        newValue: { field: editing, value: draft },
+      });
       setEditing(null);
       await loadChanges();
     } catch (err) {

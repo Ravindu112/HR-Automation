@@ -5,6 +5,7 @@ import { useAuth } from "@/context/auth-context";
 import { createClient } from "@/lib/supabase/client";
 import Badge from "@/components/badge";
 import Modal from "@/components/modal";
+import { logAudit } from "@/lib/activity";
 import type { EmployeeId } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { IdCard, Plus, RefreshCw, Copy, Check } from "lucide-react";
@@ -70,6 +71,14 @@ export default function EmployeeIIdsPage() {
         created_by: user?.employee_id ?? null,
       });
       if (insertError) throw insertError;
+      await logAudit({
+        user,
+        action: "employee_id.registered",
+        entityType: "employee_ids",
+        entityId: preview,
+        summary: `Registered employee ID ${preview} for ${form.first_name.trim()} ${form.last_name.trim()}`,
+        newValue: { employee_id: preview, first_name: form.first_name.trim(), last_name: form.last_name.trim() },
+      });
       setOpen(false);
       await load();
     } catch (err) {

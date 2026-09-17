@@ -6,6 +6,7 @@ import { useState, type ComponentType } from "react";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, LogOut, Menu, X } from "lucide-react";
 import Avatar from "@/components/avatar";
+import NotificationBell from "@/components/notification-bell";
 import type { SessionUser } from "@/lib/types";
 
 export interface NavItem {
@@ -145,6 +146,9 @@ export default function PortalShell({
                 {user.first_name} {user.last_name}
               </p>
               <p className="truncate text-[10px] text-gray-400">{user.employee_id}</p>
+            </div>
+            <div className="ml-auto">
+              <NotificationBell userId={user.id} role={user.role} />
             </div>
           </div>
           <button

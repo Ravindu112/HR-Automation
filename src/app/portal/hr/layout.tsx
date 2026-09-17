@@ -11,6 +11,12 @@ import {
   Users,
   CalendarDays,
   FilePen,
+  AlarmClock,
+  BarChart3,
+  Wallet,
+  CalendarOff,
+  ScrollText,
+  Bell,
 } from "lucide-react";
 
 export default function HrLayout({ children }: { children: React.ReactNode }) {
@@ -53,7 +59,8 @@ export default function HrLayout({ children }: { children: React.ReactNode }) {
 
   const nav: NavItem[] = [
     { href: "/portal/hr", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/portal/hr/employee-ids", label: "Employee IDs", icon: IdCard },
+    { href: "/portal/hr/analytics", label: "Analytics", icon: BarChart3 },
+    { href: "/portal/hr/attendance", label: "Attendance", icon: AlarmClock },
     {
       href: "/portal/hr/registrations",
       label: "Registrations",
@@ -61,18 +68,24 @@ export default function HrLayout({ children }: { children: React.ReactNode }) {
       badge: badges.registrations,
     },
     { href: "/portal/hr/employees", label: "Employees", icon: Users },
+    { href: "/portal/hr/employee-ids", label: "Employee IDs", icon: IdCard },
     {
       href: "/portal/hr/leave",
       label: "Leave requests",
       icon: CalendarDays,
       badge: badges.leaves,
     },
+    { href: "/portal/hr/leave-calendar", label: "Leave calendar", icon: CalendarDays },
+    { href: "/portal/hr/leave-balances", label: "Leave balances", icon: Wallet },
+    { href: "/portal/hr/holidays", label: "Holidays", icon: CalendarOff },
     {
       href: "/portal/hr/profile-changes",
       label: "Profile changes",
       icon: FilePen,
       badge: badges.profileChanges,
     },
+    { href: "/portal/hr/audit-logs", label: "Audit logs", icon: ScrollText },
+    { href: "/portal/hr/notifications", label: "Notifications", icon: Bell },
   ];
 
   return (

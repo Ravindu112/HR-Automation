@@ -7,6 +7,8 @@ import Avatar from "@/components/avatar";
 import Badge from "@/components/badge";
 import Modal from "@/components/modal";
 import DocumentList from "@/components/document-list";
+import { useAuth } from "@/context/auth-context";
+import { logAudit, notify } from "@/lib/activity";
 import type { AppUser, Document, Qualification } from "@/lib/types";
 import { formatBytes, formatDate, fullName } from "@/lib/utils";
 import {
@@ -22,6 +24,7 @@ import {
 } from "lucide-react";
 
 export default function HrEmployeesPage() {
+  const { user } = useAuth();
   const [employees, setEmployees] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -88,6 +91,23 @@ export default function HrEmployeesPage() {
         .update({ department: form.department.trim() || null, position: form.position.trim() || null })
         .eq("id", selected.id);
       if (updateError) throw updateError;
+      await logAudit({
+        user,
+        action: "employee.department_position_updated",
+        entityType: "app_users",
+        entityId: selected.id,
+        summary: `Updated ${selected.first_name} ${selected.last_name} department/position`,
+        oldValue: { department: selected.department, position: selected.position },
+        newValue: { department: form.department.trim() || null, position: form.position.trim() || null },
+      });
+      await notify({
+        userId: selected.id,
+        type: "profile",
+        title: "Your details were updated",
+        body: `HR updated your details: ${[(form.department.trim() || selected.department || null) && `department → ${form.department.trim() || "—"}`, (form.position.trim() || selected.position || null) && `position → ${form.position.trim() || "—"}`].filter(Boolean).join(", ")}.`,
+        entityType: "app_users",
+        entityId: selected.id,
+      });
       setEditing(false);
       await load();
       setSelected((s) => (s ? { ...s, department: form.department.trim() || null, position: form.position.trim() || null } : s));

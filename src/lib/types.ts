@@ -6,6 +6,16 @@ export type LeaveType = "annual" | "sick" | "casual" | "maternity" | "unpaid" | 
 export type LeaveStatus = "pending" | "approved" | "rejected";
 export type ReviewStatus = "pending" | "approved" | "rejected";
 export type QualificationType = "educational" | "professional";
+export type AttendanceStatus = "present" | "absent" | "half_day" | "leave" | "holiday";
+export type NotificationType =
+  | "general"
+  | "leave"
+  | "profile"
+  | "registration"
+  | "announcement"
+  | "training"
+  | "document"
+  | "performance";
 
 export interface SessionUser {
   id: string;
@@ -70,6 +80,9 @@ export interface LeaveRequest {
   end_date: string;
   reason: string | null;
   status: LeaveStatus;
+  is_half_day: boolean;
+  working_days: number;
+  balance_year: number;
   decided_by: string | null;
   decided_at: string | null;
   created_at: string;
@@ -102,6 +115,67 @@ export interface ProfileChangeRequest {
   decided_at: string | null;
   created_at: string;
   applicant?: Pick<AppUser, "first_name" | "last_name" | "department" | "position" | "profile_picture_path"> | null;
+}
+
+export interface AttendanceRecord {
+  id: string;
+  user_id: string;
+  date: string;
+  clock_in_at: string | null;
+  clock_out_at: string | null;
+  work_minutes: number;
+  is_late: boolean;
+  status: AttendanceStatus;
+  status_reason: string | null;
+  corrected_by: string | null;
+  correction_reason: string | null;
+  source: string;
+  created_at: string;
+  applicant?: Pick<AppUser, "first_name" | "last_name" | "department" | "position" | "profile_picture_path"> | null;
+}
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: NotificationType;
+  title: string;
+  body: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
+  read_at: string | null;
+  created_at: string;
+}
+
+export interface LeaveBalance {
+  id: string;
+  user_id: string;
+  leave_type: LeaveType;
+  balance_year: number;
+  allocated: number;
+  used: number;
+  carried_forward: number;
+}
+
+export interface PublicHoliday {
+  id: string;
+  date: string;
+  name: string;
+  type: string;
+  created_at: string;
+}
+
+export interface AuditLog {
+  id: string;
+  user_id: string | null;
+  user_employee_id: string | null;
+  action: string;
+  summary: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
+  old_value: Record<string, unknown> | null;
+  new_value: Record<string, unknown> | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
 }
 
 export const DOCUMENT_CATEGORIES: { value: DocumentCategory; label: string }[] = [

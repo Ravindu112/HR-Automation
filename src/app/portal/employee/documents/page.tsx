@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/context/auth-context";
 import { createClient } from "@/lib/supabase/client";
 import { documentPath, documentUrl, uploadFile, deleteFile } from "@/lib/supabase/storage";
+import { logAudit } from "@/lib/activity";
 import { DOCUMENT_CATEGORIES, type Document, type DocumentCategory } from "@/lib/types";
 import { formatBytes, formatDate } from "@/lib/utils";
 import { Download, Loader2, Plus, Trash2, Files } from "lucide-react";
@@ -58,6 +59,13 @@ export default function EmployeeDocumentsPage() {
         mime_type: file.type || null,
       });
       if (insertError) throw insertError;
+      await logAudit({
+        user,
+        action: "document.uploaded",
+        entityType: "documents",
+        summary: `Uploaded "${name.trim()}" (${category})`,
+        newValue: { name: name.trim(), file_name: file.name, category, size_bytes: file.size },
+      });
       setName("");
       setFile(null);
       await load();
@@ -73,6 +81,14 @@ export default function EmployeeDocumentsPage() {
     const supabase = createClient();
     await deleteFile("hr-documents", doc.file_path);
     await supabase.from("documents").delete().eq("id", doc.id);
+    await logAudit({
+      user,
+      action: "document.deleted",
+      entityType: "documents",
+      entityId: doc.id,
+      summary: `Deleted document "${doc.name}"`,
+      oldValue: { name: doc.name, file_name: doc.file_name },
+    });
     await load();
   };
 

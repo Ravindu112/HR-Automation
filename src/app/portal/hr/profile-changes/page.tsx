@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import Badge from "@/components/badge";
 import Avatar from "@/components/avatar";
 import { useAuth } from "@/context/auth-context";
+import { logAudit, notify } from "@/lib/activity";
 import type { ProfileChangeRequest, ReviewStatus } from "@/lib/types";
 import { cn, formatDate, fullName } from "@/lib/utils";
 import { FilePen, Check, X, Loader2 } from "lucide-react";
@@ -46,6 +47,26 @@ export default function HrProfileChangesPage() {
       .from("profile_change_requests")
       .update({ status, decided_by: user?.employee_id ?? null, decided_at: new Date().toISOString() })
       .eq("id", req.id);
+    await logAudit({
+      user,
+      action: `profile_change.${status}`,
+      entityType: "profile_change_requests",
+      entityId: req.id,
+      summary: `${status === "approved" ? "Applied" : "Rejected"} profile change ${req.field_label} → ${req.new_value}`,
+      oldValue: { field: req.field, value: req.current_value, status: req.status },
+      newValue: { field: req.field, value: req.new_value, status },
+    });
+    await notify({
+      userId: req.user_id,
+      type: "profile",
+      title: status === "approved" ? "Profile change applied" : "Profile change rejected",
+      body:
+        status === "approved"
+          ? `${req.field_label} was updated to "${req.new_value}".`
+          : `${req.field_label} change to "${req.new_value}" was not approved.`,
+      entityType: "profile_change_requests",
+      entityId: req.id,
+    });
     setBusyId(null);
     await load();
   };

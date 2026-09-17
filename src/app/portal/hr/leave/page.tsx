@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import Badge from "@/components/badge";
 import Avatar from "@/components/avatar";
 import { useAuth } from "@/context/auth-context";
+import { logAudit, notify } from "@/lib/activity";
 import type { LeaveRequest, LeaveStatus } from "@/lib/types";
 import { cn, daysBetween, formatDate, fullName } from "@/lib/utils";
 import { CalendarDays, Check, X } from "lucide-react";
@@ -17,6 +19,43 @@ const FILTERS: { id: Filter; label: string }[] = [
   { id: "approved", label: "Approved" },
   { id: "rejected", label: "Rejected" },
 ];
+
+const DEFAULT_ALLOCATION: Record<LeaveRequest["leave_type"], number> = {
+  annual: 20,
+  sick: 10,
+  casual: 5,
+  maternity: 90,
+  unpaid: 0,
+  other: 0,
+};
+
+function addToBalance(supabase: ReturnType<typeof createClient>, req: LeaveRequest, days: number) {
+  const year = req.balance_year ?? new Date(req.start_date).getFullYear();
+  return supabase
+    .from("leave_balances")
+    .select("*")
+    .eq("user_id", req.user_id)
+    .eq("balance_year", year)
+    .eq("leave_type", req.leave_type)
+    .maybeSingle()
+    .then(async ({ data }) => {
+      if (data) {
+        await supabase
+          .from("leave_balances")
+          .update({ used: (data.used ?? 0) + days, updated_at: new Date().toISOString() })
+          .eq("id", data.id);
+      } else {
+        await supabase.from("leave_balances").insert({
+          user_id: req.user_id,
+          balance_year: year,
+          leave_type: req.leave_type,
+          allocated: DEFAULT_ALLOCATION[req.leave_type],
+          used: days,
+          carried_forward: 0,
+        });
+      }
+    });
+}
 
 export default function HrLeavePage() {
   const { user } = useAuth();
@@ -40,11 +79,42 @@ export default function HrLeavePage() {
 
   const decide = async (req: LeaveRequest, status: "approved" | "rejected") => {
     if (status === "rejected" && !confirm("Reject this leave request?")) return;
+    if (status === "approved" && !confirm(`Approve this request for ${req.working_days ?? daysBetween(req.start_date, req.end_date)} day(s)?`)) return;
     const supabase = createClient();
+    if (status === "approved") {
+      const days = req.working_days ?? daysBetween(req.start_date, req.end_date);
+      await addToBalance(supabase, req, days);
+      await notify({
+        userId: req.user_id,
+        type: "leave",
+        title: "Leave approved",
+        body: `Your ${req.leave_type.replace("_", " ")} request (${formatDate(req.start_date)} – ${formatDate(req.end_date)}) was approved.`,
+        entityType: "leave_requests",
+        entityId: req.id,
+      });
+    } else {
+      await notify({
+        userId: req.user_id,
+        type: "leave",
+        title: "Leave request rejected",
+        body: `Your ${req.leave_type.replace("_", " ")} request (${formatDate(req.start_date)} – ${formatDate(req.end_date)}) was rejected.`,
+        entityType: "leave_requests",
+        entityId: req.id,
+      });
+    }
     await supabase
       .from("leave_requests")
       .update({ status, decided_by: user?.employee_id ?? null, decided_at: new Date().toISOString() })
       .eq("id", req.id);
+    await logAudit({
+      user,
+      action: `leave.${status}`,
+      entityType: "leave_requests",
+      entityId: req.id,
+      summary: `${status === "approved" ? "Approved" : "Rejected"} ${req.leave_type} leave for ${req.user_id} (${req.start_date} → ${req.end_date})`,
+      oldValue: { status: req.status },
+      newValue: { status, working_days: req.working_days },
+    });
     await load();
   };
 
@@ -53,9 +123,19 @@ export default function HrLeavePage() {
 
   return (
     <div className="mx-auto max-w-6xl p-6 lg:p-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Leave Management</h1>
-        <p className="text-sm text-gray-500">Review and decide on all leave requests.</p>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Leave Management</h1>
+          <p className="text-sm text-gray-500">Review and decide on all leave requests.</p>
+        </div>
+        <div className="flex gap-2">
+          <Link href="/portal/hr/leave-calendar" className="rounded-lg border border-gray-300 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50">
+            Calendar
+          </Link>
+          <Link href="/portal/hr/leave-balances" className="rounded-lg border border-gray-300 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50">
+            Balances
+          </Link>
+        </div>
       </div>
 
       <div className="mb-4 flex gap-1 overflow-x-auto rounded-xl bg-white p-1 shadow-sm ring-1 ring-gray-200">

@@ -8,6 +8,7 @@ import DocumentList from "@/components/document-list";
 import Modal from "@/components/modal";
 import { useAuth } from "@/context/auth-context";
 import { deleteFile } from "@/lib/supabase/storage";
+import { logAudit, notify } from "@/lib/activity";
 import { cn } from "@/lib/utils";
 import type { AppUser, Document } from "@/lib/types";
 import { formatDate, fullName } from "@/lib/utils";
@@ -72,6 +73,28 @@ export default function RegistrationsPage() {
         })
         .eq("id", selected.id);
       if (updateError) throw updateError;
+      await logAudit({
+        user,
+        action: `registration.${status === "verified" ? "verified" : "rejected"}`,
+        entityType: "app_users",
+        entityId: selected.id,
+        summary: `${status === "verified" ? "Verified and activated" : "Rejected"} registration of ${selected.first_name} ${selected.last_name} (${selected.employee_id})`,
+        oldValue: { status: selected.status },
+        newValue: status === "verified" ? { status: "verified" } : { status: "rejected", rejection_reason: rejectReason.trim() || null },
+      });
+      await notify({
+        userId: selected.id,
+        type: "registration",
+        title: status === "verified" ? "Welcome — your account is active" : "Registration rejected",
+        body:
+          status === "verified"
+            ? "HR verified your account. You can now sign in with your employee ID."
+            : rejectReason.trim()
+              ? `Your registration was rejected: ${rejectReason.trim()}`
+              : "Your registration was rejected. Contact HR for details.",
+        entityType: "app_users",
+        entityId: selected.id,
+      });
       setSelected(null);
       await load();
     } catch (err) {
@@ -100,6 +123,13 @@ export default function RegistrationsPage() {
         .from("employee_ids")
         .update({ status: "unused", claimed_at: null })
         .eq("employee_id", selected.employee_id);
+      await logAudit({
+        user,
+        action: "registration.id_freed",
+        entityType: "app_users",
+        entityId: selected.id,
+        summary: `Removed ${selected.first_name} ${selected.last_name} registration and freed ${selected.employee_id}`,
+      });
       setSelected(null);
       await load();
     } catch (err) {

@@ -2,7 +2,7 @@
 
 import { usePortalGuard } from "@/components/portal-guard";
 import PortalShell, { type NavItem } from "@/components/portal-shell";
-import { UserRound, Files, GraduationCap, CalendarDays } from "lucide-react";
+import { UserRound, Files, GraduationCap, CalendarDays, AlarmClock } from "lucide-react";
 
 export default function EmployeeLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, signOut } = usePortalGuard("employee");
@@ -17,6 +17,7 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
 
   const nav: NavItem[] = [
     { href: "/portal/employee", label: "My Profile", icon: UserRound },
+    { href: "/portal/employee/attendance", label: "Attendance", icon: AlarmClock },
     { href: "/portal/employee/documents", label: "My Documents", icon: Files },
     { href: "/portal/employee/qualifications", label: "My Qualifications", icon: GraduationCap },
     { href: "/portal/employee/leave", label: "My Leave", icon: CalendarDays },
